@@ -1,0 +1,591 @@
+---
+title: "Hackathon-IE6600-Group29-Section1"
+author: "Chaithanya S Gudipati, Pooja Ramesh, Indrayani Yadav"
+date: "2023-02-12"
+output:
+  pdf_document: default
+  html_document: default
+always_allow_html : yes
+---
+
+# Introduction
+## Survey Description
+The National Health and Nutrition Examination Survey (NHANES)is a unique combination of interviews and physical examinations designed to assess the health and nutrition status of adults and children in the United States.A key initiative of the National Center for Health Statistics(NCHS) is NHANES, which is a division of the Centers for Disease control and prevention (CDC). This division is compiling national health and vital statistics.
+
+
+## Sample Population and about the Dataset
+
+The sample population consists of non-institutionalized civilians of all ages living in all 50 states and Washington,D.C. Every year the survey examines a nationally representative sample of a approximately 5,000 people, who live in counties across the country. NHANES over-samples people of 60 and older African Americans, Asians and Hispanics to produce reliable statistics.
+
+The 2013- 2014 NHANES dataset includes demographic, examination, dietary, laboratory and questionnaire datasets and provides the information about the demographics socio-economic status, diet and health. Medical professionals with extensive training perform laboratory testing,medical,dental and physiological assessments as a part of the evaluation process.
+
+
+***source***:https://www.kaggle.com/datasets/cdc/national-health-and-nutrition-examination-survey?resource=download&select=examination.csv 
+
+***Additional resources***: https://www.cdc.gov/nchs/index.htm 
+
+```{r include = F}
+#loading the required libraries 
+knitr::opts_chunk$set(echo = F, tidy.opts = list(comment = FALSE), fig.align = 'center')
+library(dplyr)
+library(plyr)
+library(tidyr)
+library(plotly) 
+library(ggplot2)
+library(RColorBrewer)
+library(waffle)
+library(tidyverse)
+library(corrplot)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library(wordcloud)
+library(ggsci)
+library(ggthemes)
+library(haven)
+library(readxl)
+library(ggmosaic)
+library(fmsb)
+library(ggiraph)
+library(scales)
+library(ggpmisc)
+library(kableExtra)
+
+```
+
+```{r include=FALSE}
+# Reading csv xpt files
+
+df_demo <- read.csv('/Users/poojaramesh/Downloads/archive/demographic.csv')
+df_examination <- read.csv('/Users/poojaramesh/Downloads/archive/examination.csv')
+df_questionnaire <- read.csv('/Users/poojaramesh/Downloads/archive/questionnaire.csv')
+df_diet <- read.csv('/Users/poojaramesh/Downloads/archive/diet.csv')
+df_1999_2000 <- read_xpt("/Users/poojaramesh/Downloads/DIQ.xpt")
+df_2001_2002 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_B.xpt")
+df_2003_2004 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_C.xpt")
+df_2005_2006 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_D.xpt")
+df_2007_2008 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_E.xpt")
+df_2009_2010 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_F.xpt")
+df_2011_2012 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_G.xpt")
+df_2013_2014 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_H.xpt")
+df_2015_2016 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_I.xpt")
+df_2017_2018 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_J.xpt")
+df_2017_2020 <- read_xpt("/Users/poojaramesh/Downloads/DIQ_E.xpt")
+
+```
+
+```{r include=FALSE}
+
+# Selecting and decoding required columns from files
+df_demo1 <- df_demo[,c('SEQN','RIAGENDR','RIDAGEYR','RIDRETH3','DMDMARTL','WTINT2YR')]
+
+
+df_demo1$RIAGENDR <- ifelse(df_demo1$RIAGENDR == 1, "Male",
+                    ifelse(df_demo1$RIAGENDR == 2, "Female", df_demo1$RIAGENDR))
+
+df_demo1$RIDRETH3 <- ifelse(df_demo1$RIDRETH3 == 1, "Mexican American",
+                    ifelse(df_demo1$RIDRETH3 == 2, "Hispanic",
+                    ifelse(df_demo1$RIDRETH3 == 3, "Non-Hispanic white ",
+                    ifelse(df_demo1$RIDRETH3 == 4, "Non-Hispanic black",
+                    ifelse(df_demo1$RIDRETH3 == 6, "Non-Hispanic Asian",
+                    ifelse(df_demo1$RIDRETH3 == 7, "Non-Hispanic multiracial",
+                           df_demo1$RIDRETH3))))))
+df_demo1$DMDMARTL <- ifelse(df_demo1$DMDMARTL == 1, "Married",
+                    ifelse(df_demo1$DMDMARTL == 2, "Widowed",
+                    ifelse(df_demo1$DMDMARTL == 3, "Divorced",
+                    ifelse(df_demo1$DMDMARTL == 4, "Separated",
+                    ifelse(df_demo1$DMDMARTL == 5, "Never married",
+                    ifelse(df_demo1$DMDMARTL == 6, "Living with partner",
+                    ifelse(df_demo1$DMDMARTL == 77, "Refused",
+                    ifelse(df_demo1$DMDMARTL == 99, "Don't Know",
+                    ifelse(df_demo1$DMDMARTL == ".", "Missing",
+                           df_demo1$DMDMARTL)))))))))
+
+df_examination1 <- df_examination[,c('SEQN','BPXSY1','BPXDI1')]
+df_questionnaire1 <- df_questionnaire[,c('SEQN','SMQ040','SMD641','SMD650','SMQ621','ALQ130')]
+
+df_questionnaire1$SMQ040 <- ifelse(df_questionnaire1$SMQ040 == 1, "Every Day",
+                            ifelse(df_questionnaire1$SMQ040 == 2, "Some days",
+                            ifelse(df_questionnaire1$SMQ040 == 3, "Not at all",
+                            ifelse(df_questionnaire1$SMQ040 == 7, "Refused",
+                            ifelse(df_questionnaire1$SMQ040 == 9, "Don't know",
+                            ifelse(df_questionnaire1$SMQ040 == ".", "Missing",
+                                  df_questionnaire1$SMQ040))))))
+df_questionnaire1$SMD641 <- ifelse(df_questionnaire1$SMD641 == ".", "Missing",df_questionnaire1$SMD641)
+df_questionnaire1$SMD650 <- ifelse(df_questionnaire1$SMD650 == ".", "Missing",
+                            ifelse(df_questionnaire1$SMD650 == 999,"Don't know",df_questionnaire1$SMD650 ))
+df_questionnaire1$SMQ621 <- ifelse(df_questionnaire1$SMQ621 == ".", "Missing",
+                            ifelse(df_questionnaire1$SMQ621 == 99,"Don't know",
+                            ifelse(df_questionnaire1$SMQ621==77,"Refused",df_questionnaire1$SMQ621)))
+
+df_questionnaire1$ALQ130 <- ifelse(df_questionnaire1$ALQ130 == ".", "Missing",
+                            ifelse(df_questionnaire1$ALQ130 == 999,"Don't know",df_questionnaire1$ALQ130 ))
+
+df_work<- df_questionnaire[,c('SEQN','OCQ210','OCQ260')]
+df_work$OCQ210 <- ifelse(df_work$OCQ210 == ".", "Missing",
+                            ifelse(df_work$OCQ210 == 9,"Don't know",
+                            ifelse(df_work$OCQ210==1,"Yes",
+                            ifelse(df_work$OCQ210==2,"No",df_work$OCQ210))))
+
+df_work$OCQ260 <- ifelse(df_work$OCQ260 == ".", "Missing",
+                            ifelse(df_work$OCQ260 == 1,"Private Sector",
+                            ifelse(df_work$OCQ260==2 | df_work$OCQ260==3 | df_work$OCQ260==4,"Government Sector",
+                            ifelse(df_work$OCQ260==5,"Self-employed",
+                            ifelse(df_work$OCQ260==6,"Family Business",df_work$OCQ260)))))
+
+```
+
+```{r include = FALSE}
+#Selecting required columns from questinaire file.
+df_disease<- df_questionnaire[,c('SEQN','MCQ160L','MCQ160M','MCQ203','MCQ220','MCQ160E','DIQ010')]
+
+colnames(df_disease) <- c("SEQN","Liver Condition", "Thyroid","Jaundice","Cancer","Heart Condition","Diabetes")
+```
+## Problem Statement
+To determine the prevalence of major disease and disease risk factors in 2013-2014 using the survey's findings. This information will be utilized to evaluate the relationship between nutritional status and the promotion of health considering the national standards for measurements as blood pressure, cholesterol, hypertension along with the lifestyle parameters like smoking, alcohol consumption and work life balance.
+
+We explored the data to understand the underlying factors leading like, demographics, type of environment, nutrition intake and lifestyle leading to the most predominant condition amongst the given population. On further analysis, we will evaluate the following from the data sets :- 
+
+- Which is most occurring health condition according to survey conducted by NHANES in 2013-2014? Which age group and race experiences the greatest health   issues?
+- How this condition contributes to other health conditions from the survey of the population using correlation?
+- Evaluating the nutrient consumption and lifestyle that leads to the most prevalent health condition and analyzing the factors that are contributing the most to the disease.
+- How the most predominant health condition has varied over the years 1999 to 2018?
+
+# Section 1: Exploring the Demographics and understanding the most occuring health disorder.
+
+#### Which is most occurring health condition according to survey conducted by NHANES in 2013-2014? Which age group and race experiences the greatest health issues?
+
+```{r  fig.align ='center' ,echo = F,results='hide',fig.keep='all'}
+#list of demographic, smoking , alcohol information
+df_exam_demo_ques <- join_all(list(df_demo1,df_examination1,df_questionnaire1),by="SEQN",type ='full')
+#head(analytic1_df)
+
+colnames(df_exam_demo_ques) <-c('SEQN','Gender','Age','Race','Martial_Status','Weight','BP_Systolic','BP_Diastolic','Do_you_smoke_now','cigs_smoked_30_Days','avg_cigs_smoked_30_Days','cigs_entire_life','avg_alchohol_use_120_Days')
+
+#creating a dataframe for age groups
+df_age <- (df_exam_demo_ques%>%select('SEQN','Race','Gender','Age')%>% mutate(Age.Group = case_when(Age>=18 & Age<20 ~ "18-20", 
+                                                                                                    
+                                                               Age>=20 & Age<30 ~ "20-30",
+                                                                Age>=30 & Age<40 ~ "30-40",
+                                                                Age>=40 & Age<50 ~ "40-50",
+                                                                Age>=50 & Age<60 ~ "50-60",
+                                                                Age>=60 & Age<70 ~ "60-70",
+                                                                Age>=70 & Age<80 ~ "70-80",
+                                                                Age>=80 & Age<90 ~ "80-90",
+                                                                Age>=90 & Age<100 ~ "90+"),align = 'c'))
+
+df_diabetes <- df_disease %>% select('SEQN','Diabetes') %>%
+        filter(Diabetes ==1)
+
+df_dia_age <- join_all(list(df_diabetes,df_age),by="SEQN",type ='full')%>%drop_na()
+```
+The respondents in the survey data set consists of 8.8% of Hispanic, 17.1% of Mexican Americans, 10.2% of non-Hispanic Asians, 25.8% of non-Hispanic black, 2.1% of non-Hispanic multiracial and 36.1% of non-Hispanic whites. 
+```{r ,fig.align ='center',fig.keep='all'}
+
+kable(
+         df_dia_age %>% 
+        select(Race,Gender,Age.Group) %>% 
+               group_by(Race) %>% 
+               summarise(count=n())%>% 
+               drop_na()%>%
+         arrange(desc(count)))%>%
+           kableExtra::kable_styling(latex_options = "HOLD_position", position = "center")
+
+```
+In the NHANES data set, there are many prevalent diseases however, we are considering the most common disorders which are cancer, thyroid, diabetes,heart conditions, jaundice and liver conditions affecting the population in the year 2013-2014 according to WHO. From the below figure, we observe that *Diabetes* is the most occurring health disorder, followed by thyroid and cancer according to the census of 2013-2014. 
+
+Diabetes is a auto-immune disorder which is chronic(long lasting) and affects how your body turns food into energy. This overtime leads to serious damage to the heart,blood vessels, eyes, kidneys and nerves. According to WHO, about 422 million people worldwide have diabetes and 1.5 million deaths are directly attributed to diabetes each year.
+```{r ,echo=F,warning = FALSE,fig.align = 'center',fig.width= 8, fig.height=4,results='hide',fig.keep='all'}
+
+#Selecting required columns from questionnaire file.
+df_disease<- df_questionnaire[,c('SEQN','MCQ160L','MCQ160M','MCQ203','MCQ220','MCQ160E','DIQ010')]
+#Renaming the above columns
+colnames(df_disease) <- c("SEQN","Liver Condition", "Thyroid","Jaundice","Cancer","Heart Condition","Diabetes")
+
+# arranging the list of disorders and count the population who are affected. 
+df_pivot_diseases <- df_disease%>%
+                      select(-c(1))%>%
+                      pivot_longer(cols = c(1:6),
+                           names_to = "Disease",
+                           values_to = "value")%>%
+                      filter(value == 1)%>%
+                      group_by(Disease)%>%
+                      dplyr::summarise(count = n())
+
+# plot1 - Finding out most predominant disorder using bar plot
+disease_prev_plot <-  ggplot(data=df_pivot_diseases, aes(x=Disease, y=count, fill=count)) +
+       geom_bar(stat="identity") +
+       geom_text(aes(y=count, label=count), vjust=1.6, 
+       color="white", size=3.5) +
+       ggtitle("Disease Prevalence") + ylab("Number of people Affected") + xlab("Types of Diseases") + scale_fill_continuous(low = 'coral3', high = '#00bfc4') + 
+  labs(subtitle = "Most prevalent diseases of 2013-2014",caption = "Source: NHANES survey 2013-2014")
+
+disease_prev_plot
+
+```
+In the above table, we notice that there are 6 different types of Races who were a major part of the survey. Now as we know that diabetes is the most widespread disorder, which race distribution and the age is most affected by diabetes ?
+```{r warning=FALSE,fig.align = 'center',fig.width= 8, fig.height=4,results='hide',fig.keep='all'}
+#### list of demographic, smoking , alcohol info
+df_exam_demo_ques <- join_all(list(df_demo1,df_examination1,df_questionnaire1),by="SEQN",type ='full')
+#head(analytic1_df)
+
+colnames(df_exam_demo_ques) <-c('SEQN','Gender','Age','Race','Martial_Status','Weight','BP_Systolic','BP_Diastolic','Do_you_smoke_now','cigs_smoked_30_Days','avg_cigs_smoked_30_Days','cigs_entire_life','avg_alchohol_use_120_Days')
+
+#colnames(df_exam_demo_ques) 
+
+df_age <- (df_exam_demo_ques%>%select('SEQN','Race','Gender','Age')%>% mutate(Age.Group = case_when(Age>=18 & Age<20 ~ "18-20", 
+                                                                Age>=20 & Age<30 ~ "20-30",
+                                                                Age>=30 & Age<40 ~ "30-40",
+                                                                Age>=40 & Age<50 ~ "40-50",
+                                                                Age>=50 & Age<60 ~ "50-60",
+                                                                Age>=60 & Age<70 ~ "60-70",
+                                                                Age>=70 & Age<80 ~ "70-80",
+                                                                Age>=80 & Age<90 ~ "80-90",
+                                                                Age>=90 & Age<100 ~ "90+")))
+
+df_diabetes <- df_disease %>% select('SEQN','Diabetes') %>%
+        filter(Diabetes ==1)
+
+df_dia_age <- join_all(list(df_diabetes,df_age),by="SEQN",type ='full')%>%drop_na()
+ggplot(df_dia_age, aes(x = Age.Group, fill = Race)) + 
+  geom_bar(position = "dodge") + 
+  scale_fill_manual(values = c( "darkslateblue","thistle","palevioletred","cornflowerblue","coral3","#00bfc4")) +
+  ggtitle("Race Disribution(2013-2014)")  + labs(title="Race Disribution(2013-2014)",subtitle = "Race Distribution according to age for Diabetes",caption = "Source: NHANES survey 2013-2014") + xlab("Age Groups") + ylab("Count of Race & Ethnicity") 
+
+```
+Non-Hispanic whites between 60-70 age range are the most affected with diabetes, meanwhile non-Hispanic multiracial groups are the least affected.Here, we notice that throughout all age groups non-Hispanic whites seems to be the most affected with diabetes, followed by non-Hispanic blacks with very slight less count.
+
+On analysis from the below figure, we can concur that most of the population do not have diabetes, but amongst the ones affected, male population is more. 
+``` {r echo = F,warning=FALSE,results='hide',fig.keep='all',fig.align = 'center',fig.width= 8, fig.height=4}
+
+df_dis<-df_disease %>% select(SEQN,Diabetes) %>% filter(Diabetes ==1 | Diabetes ==2)
+df_race_gen <- df_demo1 %>% select(SEQN,RIDRETH3,RIAGENDR)
+df <- join_all(list(df_dis,df_race_gen),by="SEQN",type ='full')
+colnames(df) <- c("SEQN","Diabetes","Race","Gender")
+
+ggplot(df, aes(x = Diabetes, fill = Race)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(Gender ~ .) +
+  labs(x = "Diabetes Status", y = "Density") +
+  scale_fill_brewer(palette = "Set1") 
+  theme_classic() + labs(title="Density Plot for diabetes Disribution(2013-2014)",subtitle = "Race Distribution according to gender for Diabetes",caption = "Source: NHANES survey 2013-2014")
+```
+
+## Correlation plot for Diseases
+```{r echo=F, warning=FALSE,fig.align = 'left',fig.width= 4, fig.height=4,results='hide',fig.keep='all'}
+## To get correlation between diseases
+df_di <- df_disease %>% select(-SEQN)%>% drop_na()
+corr_matrix <- cor(df_di)
+
+corrplot(corr_matrix , method = 'ellipse',col=colorRampPalette(c("#00bfc4","coral"))(50))+theme_minimal()+geom_tile(aes(fill = value), color="white") + scale_fill_gradient2(limits=c(-0.5,3),
+                       #low="blue", high="red",
+                      # mid="white", midpoint=0,
+                      #low = "purple", 
+                        #high ='yellow',
+                       #na.value="yellow4",
+                       guide="colorbar") +theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 5),
+                                                                  plot.title = element_text(size = 8),
+    axis.text = element_text(size =6),
+    axis.title = element_text(size = 6),
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 6),
+    plot.width = 4,
+    plot.height = 4)
+```
+ The correlation heat map tells us how presence of diabetes in an individual can effect other disorders from the list.We notice that diabetes does affect other diseases as well highest being *thyroid*.
+ 
+We can conclude that Diabetes is the most predominant among all the disorders in the survey, followed by thyroid and cancer.On further analysis, we notice that non-Hispanic whites in the ages of 60 to 70 are the most affected population. Among them, male seem to be more affected and prone to Diabetes.
+
+# Section 2:
+### Part 1 : Study of effect of nutrition and lifestyle
+This section gives insights into the nutrition and lifestyle that contributes to Diabetes. According to National Center for Biotechnology Information (NCBI), we have considered the below list of nutrients (minerals & vitamins), whose consumption greatly leads to diabetes. 
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 2.5, fig.height=2.5,results='hide',fig.keep='all'}
+# word cloud plot, display of nutrients
+
+df_nutrients_1<- df_diet[,c('DR1TKCAL','DR1TPROT','DR1TCARB','DR1TSUGR','DR1TFIBE','DR1TTFAT','DR1TSFAT','DR1TMFAT','DR1TCHOL',"DR1TATOC" ,"DR1TATOA", "DR1TRET" , "DR1TVARA","DR1TLYCO" ,"DR1TLZ","DR1TVB1" , "DR1TVB2" , "DR1TNIAC",
+"DR1TVB6" , "DR1TFOLA" ,"DR1TFA" ,"DR1TVB12" ,"DR1TB12A", "DR1TVC"  , "DR1TVD",   "DR1TVK"  , "DR1TCALC","DR1TPHOS", "DR1TMAGN" ,"DR1TIRON" ,"DR1TZINC", "DR1TCOPP", "DR1TSODI","DR1TPOTA", "DR1TSELE" ,"DR1TCAFF","DR1TALCO")]
+
+colnames(df_nutrients_1) <- c("Energy","Protein","Carbohydrates","Total Sugars",
+                            "Fibre","Total fat","Total saturated fatty acid","Total monounsaturated fatty acid","Cholestrol","Vitamin E","Alpha Vitamin E","Retinol","Vitamin A","Lycopene","Lutein + zeaxanthin","Vitamin B1","Vitamin B2","Niacin","Vitamin B6","Total Folate","Folic Acid","Vitamin B12","Vitamin B12A","Vitamin C","Vitamin D","Vitamin K","Calcium","Phosporus","Magnesium","Iron","Zinc","Copper","Sodium","Potassium","Selenium","Caffeine","Alcohol")
+
+df_nutrients_2 <- df_nutrients_1 %>%
+  select(1:37) %>%drop_na()%>%
+  gather(Nutrients, Value) %>%
+  group_by(Nutrients) %>%
+  dplyr::summarize(count = sum(Value))
+
+wordcloud(words = df_nutrients_2$Nutrients,
+          freq = rep(1, nrow(df_nutrients_2)),
+          random.order = TRUE,scale = c(1, 1),
+          max.words = 50,
+          res = 50,
+          colors = brewer.pal(8, "BuPu"))
+```
+
+#### Evaluating the nutrient consumption and lifestyle that leads to the most prevalent health condition and analyzing the factors that are contributing the most to the disease.
+
+### Correlation plot for Vitamins
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 4, fig.height= 4,results='hide',fig.keep='all'}
+df_nutrients<- df_diet[,c('SEQN','DR1TKCAL','DR1TPROT','DR1TCARB','DR1TSUGR','DR1TFIBE','DR1TTFAT','DR1TSFAT','DR1TMFAT','DR1TCHOL',"DR1TATOC" ,"DR1TATOA", "DR1TRET" , "DR1TVARA","DR1TLYCO" ,"DR1TLZ","DR1TVB1" , "DR1TVB2" , "DR1TNIAC",
+"DR1TVB6" , "DR1TFOLA" ,"DR1TFA" ,"DR1TVB12" ,"DR1TB12A", "DR1TVC"  , "DR1TVD",   "DR1TVK"  , "DR1TCALC","DR1TPHOS", "DR1TMAGN" ,"DR1TIRON" ,"DR1TZINC", "DR1TCOPP", "DR1TSODI","DR1TPOTA", "DR1TSELE" ,"DR1TCAFF","DR1TALCO")]
+#head(df_nutrients)
+colnames(df_nutrients) <- c("SEQN","Energy","Protein","Carbohydrates","Total_Sugars",
+                            "Fibre","Total fat","Total saturated fatty acid","Total monounsaturated fatty acid","Cholestrol","Vitamin E","Alpha Vitamin E","Retinol","Vitamin A","Lycopene","Lutein + zeaxanthin","Vitamin B1","Vitamin B2","Niacin","Vitamin B6","Total Folate","Folic Acid","Vitamin B12","Vitamin B12A","Vitamin C","Vitamin D","Vitamin K","Calcium","Phosporus","Magnesium","Iron","Zinc","Copper","Sodium","Potassium","Selenium","Caffeine","Alcohol")
+
+
+# Filter to select only the variables of interest (nutrient variables)
+
+nutrient_data <-df_nutrients %>% select("Energy","Protein","Carbohydrates","Total_Sugars","Fibre","Total fat","Total saturated fatty acid","Total monounsaturated fatty acid","Cholestrol","Vitamin E","Alpha Vitamin E","Retinol","Vitamin A","Lycopene","Lutein + zeaxanthin","Vitamin B1","Vitamin B2","Niacin","Vitamin B6","Total Folate","Folic Acid","Vitamin B12","Vitamin B12A","Vitamin C","Vitamin D","Vitamin K","Calcium","Phosporus","Magnesium","Iron","Zinc","Copper","Sodium","Potassium","Selenium","Caffeine","Alcohol")%>%na.omit()
+
+nutrient_vitamins <- df_nutrients%>% select("Vitamin E","Alpha Vitamin E","Vitamin A","Vitamin B1","Vitamin B2","Vitamin B6","Vitamin B12","Vitamin B12A","Vitamin C","Vitamin D","Vitamin K")%>%na.omit()
+
+nutrient_minerals <- df_nutrients%>% select("Calcium","Phosporus","Magnesium","Iron","Zinc","Copper","Sodium","Potassium","Selenium")%>%na.omit()
+analytic2_df <- join_all(list(df_diabetes,df_nutrients),by="SEQN",type ='full')
+nutrient_data_1 <-analytic2_df  %>% select("Diabetes","Energy","Protein","Carbohydrates","Total_Sugars","Fibre","Total fat","Total saturated fatty acid","Total monounsaturated fatty acid","Cholestrol","Vitamin E","Alpha Vitamin E","Retinol","Vitamin A","Lycopene","Lutein + zeaxanthin","Vitamin B1","Vitamin B2","Niacin","Vitamin B6","Total Folate","Folic Acid","Vitamin B12","Vitamin B12A","Vitamin C","Vitamin D","Vitamin K","Calcium","Phosporus","Magnesium","Iron","Zinc","Copper","Sodium","Potassium","Selenium","Caffeine","Alcohol")%>%na.omit()
+
+#PLOT FOR VITAMINS
+# Compute the correlation matrix
+corr_matrix <- cor(nutrient_vitamins)
+
+corrplot(corr_matrix ,type = 'upper', method = 'circle',col=colorRampPalette(c("blue","skyblue","coral3"))(100))+theme_minimal()+geom_tile(aes(fill = value), color="white") + scale_fill_gradient2(limits=c(-0.5,3),
+                       #low="blue", high="red",
+                       mid="white", midpoint=0,
+                       na.value="grey50",
+                       guide="colorbar") +theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 5))
+
+
+
+ 
+
+
+```
+
+### Correlation plot for Minerals 
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 4, fig.height=4,results='hide',fig.keep='all'}
+## Correlation plot for minerals
+corr_matrix_1 <- cor(nutrient_minerals)
+corrplot(corr_matrix_1 , method = 'circle',type = 'lower',col=colorRampPalette(c("blue","skyblue","coral3"))(100))+theme_minimal()+geom_tile(aes(fill = value), color="white") + scale_fill_gradient2(limits=c(-0.5,3),
+                       low="blue", high="black",
+                       mid="white", midpoint=0,
+                       na.value="grey50",
+                       guide="colorbar") +theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 5))
+
+
+```
+
+According to WHO, deficiency of magnesium is the main cause for diabetes. From the heat maps, it is clearly evident that the correlation between Magnesium and phosphorous have the highest relation of 0.85, leading us to conclude that they do have the highest affect on Diabetes. Furthermore, we can conclude that Vitamins B6,B2 and B12 lead to this disorder.
+
+### Lifestyle Factors - Alchohol consumption and Physical Activity
+There was recent article on MedicalNewsToday which highlighted the main lifestyle changes which need to be incorporated in order to reduce diabetes.Great emphasis was laid on Physical activity and Alcohol consumption.
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 4, fig.height=4,results='hide',fig.keep='all'}
+df_lifestyle <- df_questionnaire[,c("SEQN","DIQ010","DUQ200","PAQ605","SMQ040","ALQ101")]
+colnames(df_lifestyle) <- c("SEQN","Do-you_have_diabetes?","Drug_usage","Do_you_do_vigorous_physical_activity",
+                            "Smoke(YES/NO)","Alchohol")
+df_lifestyle_demo_age <- join_all(list(df_disease,df_lifestyle,df_age,df_exam_demo_ques),by="SEQN",type ='full')
+
+df_alchohol<- df_lifestyle_demo_age %>%
+  filter(Alchohol== 1 | Alchohol == 2)
+
+df_activity<- df_lifestyle_demo_age %>%
+  filter(Do_you_do_vigorous_physical_activity == 1 | Do_you_do_vigorous_physical_activity == 2)
+
+```
+
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 8, fig.height=4,results='hide',fig.keep='all'}
+#Physical Activity
+colors <- brewer.pal(2,"Set2")
+plot_p <-mosaicplot(Age.Group~Do_you_do_vigorous_physical_activity, data=df_activity ,color = colors, main = "",xlab="Age Group", ylab="Physical Activity", caption = "Source: NHANES survey 2013-2014")+
+title("Mosaic Plot of Age Group and Physical Activity")
+
+```
+From the mosaic plot, it is evident that people who do rigorous physical activities are least affected by diabetes.
+
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 8, fig.height=4,results='hide',fig.keep='all'}
+#Alcohol
+colors2 <- brewer.pal(3,"Set2")
+plot_a <-mosaicplot(Age.Group~Alchohol, data=df_alchohol , color=colors2, main = "",xlab="Age Group", ylab="Alchohol consumption", caption = "Source: NHANES survey 2013-2014")+
+title("Mosaic Plot of Age Group and Alchohol Consumption")
+
+```
+Here, the graph concludes alcohol consumption does affect diabetes greatly. People who consume alcohol are more prone to being diabetic and from this plot, we can also conclude that alcohol intake is more among the age group 20-70.
+
+### Part 2 : Effect of blood sugar levels, chorestrol and hypertension
+Poor blood sugar levels can worsen your cholesterol levels. A diabetic patient usually has low levels of good cholesterol and high levels of bad cholesterol.
+```{r echo=F, warning = FALSE,fig.align = 'left',fig.width= 6, fig.height=4, results='hide',fig.keep='all'}
+#Scatter plots for blood pressure vs cholesterol and total sugars for diabetes.
+
+df_BP <- df_examination[,c("SEQN","BPXSY1","BPXDI1")]
+df_hypertension <- df_questionnaire[,c("SEQN","BPQ020")]
+colnames(df_BP) <- c("SEQN","Systolic Blood pressure","Diastolic blood Pressure")
+colnames(df_hypertension) <- c("SEQN","Hypertension")
+dia_sugar_df <- join_all(list(df_exam_demo_ques,df_disease,df_BP,df_nutrients,df_hypertension),by="SEQN",type ='full')
+
+#Scatter plot - Diabetes vs sugar
+df_dia_sugar <- dia_sugar_df%>%
+  filter(Diabetes == 1)%>%
+  select('Systolic Blood pressure','Total_Sugars','Hypertension','Gender')%>%drop_na()
+
+
+long = dia_sugar_df  %>%
+  select(SEQN,Gender,"Cholestrol","Total_Sugars","Systolic Blood pressure","Diastolic blood Pressure","Hypertension") %>% 
+  gather(bp, value, "Systolic Blood pressure":"Diastolic blood Pressure") %>% 
+  mutate(bp = recode(bp, `BPXDI1` = "Diastolic", `BPXSY1` = "Systolic",))%>%drop_na()
+
+bp_chol <- ggplot(long, aes(value, Cholestrol,color = Gender)) +
+  geom_point(alpha = 0.7, size = 2) +
+  facet_grid(bp ~ Gender) +
+  scale_color_jama() +
+  xlab("Blood pressure (mm Hg)") +
+  ylab("Cholesterol (mg/dl)") +
+  ggtitle("Blood pressure vs. Cholesterol vs. Gender") +
+  labs(
+    caption = "Source: NHANES survey 2013-2014",
+    col="Blood pressure")
+bp_chol
+```
+
+```{r echo=F, warning= FALSE,fig.align = 'center',fig.width= 6, fig.height=4,results='hide',fig.keep='all'}
+
+bp_sugar <- ggplot(long, aes(value,Total_Sugars,color = Gender)) +
+  geom_point(alpha = 0.7, size = 2)  +
+  facet_grid(bp ~ Gender) +
+  scale_color_jama() +
+  xlab("Blood pressure (mm Hg)") +
+  ylab("Total Sugars (mg/dl)") +
+  ggtitle("Blood pressure vs. Total Sugars vs Gender") +
+  labs(
+    caption = "Source: NHANES survey 2013-2014",
+    col="Blood pressure")
+bp_sugar 
+
+
+```
+Majority of the female diabetic patients have sugar levels between 0 and 300 mg/dl and a diastolic Blood pressure of range 50-100 mm Hg whereas for a male patient, the blood pressure remains similar, howsoever the sugar levels vary between 0-400 md/dl. Systolic blood pressure is similar for both ranging from 75-175 mm Hg.We can observe similar trends for cholesterol as well where male has slightly higher values in comparison to the female.
+
+Even though we noticed that work sectors does not affect the onset of diabetes, however, stress or hypertension is major factor in this. Hypertension leads to high levels of cholesterol which is in turn is a major cause for the onset of diabetes in an individual.From the below plot, 75 percentile of individuals who have diabetes have a cholesterol level ranging from 125 - 375 mg/dl with a median value of 225 mg/dl.
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 6, fig.height=2,results='hide',fig.keep='all'}
+
+ggplot(long, aes(Hypertension,Cholestrol,color = Hypertension)) +
+  geom_boxplot(fill='#00BFC4') +
+  scale_color_jama() +
+  #theme_hc() +
+  #theme(text = element_text(family = "serif", size = 11), legend.position="none") +
+  xlab("Presence of hypertension") +
+  ylab(" cholesterol (mg/dl)") +
+  ggtitle("Hypertension vs. Cholesterol") +
+  labs(
+    caption = "Source: NHANES survey 2013-2014")+
+scale_y_continuous(limits=c(0, 1000))
+```
+# Section 3 
+#### How the most predominant health condition has varied over the years 1999 to 2018?
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 6, fig.height=3,results='hide',fig.keep='all'}
+df_dia_1920 <- df_1999_2000 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_0102 <- df_2001_2002 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_0304 <- df_2003_2004 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_0506 <- df_2005_2006 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_0708 <- df_2007_2008 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_0910 <- df_2009_2010 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_1112 <- df_2011_2012 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_1314 <- df_2013_2014 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_1516 <- df_2015_2016 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+df_dia_1718 <- df_2017_2018 %>%
+                 select(DIQ010) %>%
+                 group_by(DIQ010) %>%
+                 summarise(count = n()) %>%
+                 filter(DIQ010 ==1 | DIQ010 == 2)
+list_df_dia_1920 <- as.list(df_dia_1920)
+list_df_dia_0102 <- as.list(df_dia_0102)
+list_df_dia_0304 <- as.list(df_dia_0304)
+list_df_dia_0506 <- as.list(df_dia_0506)
+list_df_dia_0708 <- as.list(df_dia_0708)
+list_df_dia_0910 <- as.list(df_dia_0910)
+list_df_dia_1112 <- as.list(df_dia_1112)
+list_df_dia_1314 <- as.list(df_dia_1314)
+list_df_dia_1516 <- as.list(df_dia_1516)
+list_df_dia_1718 <- as.list(df_dia_1718)
+
+count_dia <- c(list_df_dia_1920$count[1],list_df_dia_0102$count[1],list_df_dia_0304$count[1],list_df_dia_0506$count[1],list_df_dia_0708$count[1],list_df_dia_0910$count[1],list_df_dia_1112$count[1],list_df_dia_1314$count[1],list_df_dia_1516$count[1],list_df_dia_1718$count[1])
+year_dia <- c("1999-2000","2001-2002","2003-2004","2005-2006","2007-2008","2009-2010","2011-2012","2013-2014","2015-2016","2017-2018")
+count_dia2 <- c(list_df_dia_1920$count[2],list_df_dia_0102$count[2],list_df_dia_0304$count[2],list_df_dia_0506$count[2],list_df_dia_0708$count[2],list_df_dia_0910$count[2],list_df_dia_1112$count[2],list_df_dia_1314$count[2],list_df_dia_1516$count[2],list_df_dia_1718$count[2])
+
+data_dia <- data.frame(year_dia, count_dia)
+
+ggplot(data_dia, aes(x = year_dia, y = count_dia, group = 1)) +
+     geom_line(color="#00BFC4") +
+     xlab("Year") +
+     ylab("Count") +
+     ggtitle("Diabetic count over Time") + labs(caption =  "Source: NHANES survey 2013-2014")+
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r echo=F, warning=FALSE,fig.align = 'center',fig.width= 6, fig.height=3,results='hide',fig.keep='all'}
+
+ggplot(data_dia, aes(x = year_dia, y = count_dia2, group = 1)) +
+   geom_line(color = "coral") +
+   xlab("Year") +
+   ylab("Count") +
+   labs(x = "Year", y = "Count") +
+   ggtitle("Non-Diabetic count over Time") +labs(caption =  "Source: NHANES survey 2013-2014")+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+The above plots are based on diabetes data from 1999-2018.Diabetes trends have varied greatly over the years and we can see a clear increase in count over the years. We have further analysed that there is drastic increase in count between the years 2006 and 2007 followed by slight variation over the years. Furthermore, we have observed the non diabetic trend as well. 
+
+# Conclusion 
+Over this research, we have learnt Diabetes disorder is the most occurring condition which have drastically changed over the years from 1999-2018.Our data-set was a vast data-set with over 2500 columns and we encoded and chose the columns specific to our analysis for diabetes.Through the analysis, we got insights into how demographic, nutrition,lifestyle and workplace factors affect various disorders, here in specific Diabetes. Starting with the demographics, we noticed that the Non-Hispanic whites (male) were the most affected with diabetes 2013-2014. 
+
+We further delved deep into the various nutrition and lifestyle factors that affect diabetes. On research from WHO and prominent medical papers,we were able to project and understand the important minerals and vitamins that have impact on diabetes.We analysed that magnesium and vitamin B12,B6 and B2* are the contributing nutrients.Moving to the lifestyle factors, physical activity and alcohol assumption had greater effect on diabetes.Even though the work place sectors play no role for the onset of diabetes, the stress or hypertension levels seem to have a great effect as they do greatly vary our blood sugar and cholesterol levels.From the time series plots,we observe that both the number of cases and the prevalence of diabetes have been steadily increasing over the past few decades.This survey's data will be utilized in epidemiological studies and health sciences research, which aid in the creation of solid public health policies, the direction and planning of health programs and services, and the advancement of national health literacy.
+
+## References
+
+-https://www.betterhealth.vic.gov.au/health/conditionsandtreatments/diabetes-long-term-effects
+
+-https://www.who.int/news/item/14-11-2022-insulin-and-health-technology-manufacturers-make-commitments-in-support-of-who-asks
+-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7353202/#:~:text=Low%20magnesium%20intake%20is%20a,progression%20to%20diabetes%2Drelated%20complications.
+
+-https://www.cdc.gov/nchs/nhanes/index.htm
+
+
+
+
+
+
